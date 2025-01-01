@@ -7,6 +7,7 @@ Piano World is a web application built with React and Vite that showcases a vari
 
 - Display a collection of pianos with images, descriptions, and prices.
 - Add pianos to the shopping cart.
+- use of localStorage to save the information of the cart
 
 
 ## Installation

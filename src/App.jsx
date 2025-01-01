@@ -1,85 +1,81 @@
-import {useState} from 'react'
+import {useState, useEffect} from 'react'
 import Keyboard from "./components/Keyboard"
 import Header from "./components/Header"
 import { db } from './data/db'
 function App() {
-  const [data, setData] = useState(db)
+    const initialCart = () => {
+        const localStorageCart = localStorage.getItem('cart')
+        return localStorageCart ? JSON.parse(localStorageCart) : []
+    }
+    
+  const [data] = useState(db)
+  const [cart, setCart] = useState(initialCart)
+  const MAX_ITEMS = 5
+
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart))
+  }, [cart])
 
 
-  
+  function addToCart(item){
+    const itemExists = cart.findIndex((keyboard) => keyboard.id === item.id)
+    if(itemExists >= 0 ){
+        if (cart[itemExists].quantity >= MAX_ITEMS) return
+        const updatedCart = [...cart] 
+        updatedCart[itemExists].quantity += 1
+        setCart(updatedCart)
+    }else{
+        item.quantity = 1
+        setCart([...cart, item])
+    }
+  }
+  function removeFromCart(id){
+    setCart(prevCart => prevCart.filter(keyboard => keyboard.id !== id))
+  }
+
+  function increaseQuantity(id){
+    const updatedCart = cart.map(item => {
+        if(item.id === id && item.quantity < MAX_ITEMS){
+            return{
+                ...item,
+                quantity: item.quantity + 1
+            }
+        }
+        return item
+    })
+    setCart(updatedCart)
+}
+  function decreaseQuantity(id){
+    const updatedCart = cart.map(item => {
+        if(item.id === id && item.quantity > 1){
+            return{
+                ...item,
+                quantity: item.quantity -1
+            }
+        }
+        return item
+    })
+    setCart(updatedCart)
+
+  }
+
+  function clearCart(){
+    setCart([])
+  }
+
+
+
   return (
     <>
-    <Header />
-    <header className="py-5 header">
-        <div className="container-xl">
-            <div className="row justify-content-center justify-content-md-between">
-                <div className="col-8 col-md-3">
-                    <a href="index.html">
-                        <img className="img-fluid" src="./public/img/piano_logo.png" alt="imagen logo" />
-                    </a>
-                </div>
-                <nav className="col-md-6 a mt-5 d-flex align-items-start justify-content-end">
-                    <div 
-                        className="carrito"
-                    >
-                        <img className="img-fluid" src="./public/img/carrito.png" alt="imagen carrito" />
+    <Header
+      cart={cart}
+      removeFromCart={removeFromCart}
+      increaseQuantity={increaseQuantity}
+      decreaseQuantity={decreaseQuantity}
+      clearCart={clearCart}
 
-                        <div id="carrito" className="bg-white p-3">
-                            <p className="text-center">El carrito esta vacio</p>
-                            <table className="w-100 table">
-                                <thead>
-                                    <tr>
-                                        <th>Imagen</th>
-                                        <th>Nombre</th>
-                                        <th>Precio</th>
-                                        <th>Cantidad</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <img className="img-fluid" src="./public/img/piano_02.jpg" alt="imagen piano" />
-                                        </td>
-                                        <td>SRV</td>
-                                        <td className="fw-bold">
-                                                $299
-                                        </td>
-                                        <td className="flex align-items-start gap-4">
-                                            <button
-                                                type="button"
-                                                className="btn btn-dark"
-                                            >
-                                                -
-                                            </button>
-                                                1
-                                            <button
-                                                type="button"
-                                                className="btn btn-dark"
-                                            >
-                                                +
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <button
-                                                className="btn btn-danger"
-                                                type="button"
-                                            >
-                                                X
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <p className="text-end">Total pagar: <span className="fw-bold">$899</span></p>
-                            <button className="btn btn-dark w-100 mt-3 p-2">Vaciar Carrito</button>
-                        </div>
-                    </div>
-                </nav>
-            </div>
-        </div>
-    </header>
+    />
+    
 
     <main className="container-xl mt-5">
         <h2 className="text-center">Nuestra Colección</h2>
@@ -90,6 +86,8 @@ function App() {
               <Keyboard
                 key={keyboard.id}
                 keyboard={keyboard}
+                setCart={setCart}
+                addToCart={addToCart}
               
               />
 
