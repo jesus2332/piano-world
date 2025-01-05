@@ -53,6 +53,3 @@ The output will be located in the `dist` directory.
 
 
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
