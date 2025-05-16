@@ -1,18 +1,18 @@
 // frontend/src/App.tsx
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router'; // CAMBIADO A react-router-dom
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router';
 import Header from "./components/Header";
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MyAccountPage from './pages/MyAccountPage';
+import AppLoadingScreen from './components/AppLoadingScreen'; 
 import { useAuth } from './hooks/useAuth';
 import { Box, Container, Typography, CircularProgress } from '@mui/material';
 
 function MainLayout() {
-  
   return (
     <Box className="flex flex-col min-h-screen">
-      <Header /> 
+      <Header />
       <Container component="main" maxWidth="xl" className="flex-grow py-8">
         <Outlet />
       </Container>
@@ -22,7 +22,7 @@ function MainLayout() {
           py: 3,
           px: 2,
           mt: 'auto',
-          backgroundColor: (theme) => theme.palette.customDark.main, 
+          backgroundColor: (theme) => theme.palette.customDark.main,
         }}
       >
         <Container maxWidth="xl">
@@ -35,16 +35,20 @@ function MainLayout() {
   );
 }
 
+function RouteAuthLoading({ message }: { message: string }) {
+  return (
+    <Box className="flex flex-col justify-center items-center h-[70vh]">
+      <CircularProgress />
+      <Typography variant="h6" className="mt-4 text-gray-700">{message}</Typography>
+    </Box>
+  );
+}
+
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <Box className="flex justify-center items-center h-screen">
-        <CircularProgress />
-        <Typography variant="h6" className="ml-4">Cargando autenticación...</Typography>
-      </Box>
-    );
+    return <RouteAuthLoading message="Verificando acceso..." />;
   }
 
   if (!user) {
@@ -58,12 +62,7 @@ function GuestRoute({ children }: { children: JSX.Element }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <Box className="flex justify-center items-center h-screen">
-        <CircularProgress />
-        <Typography variant="h6" className="ml-4">Cargando autenticación...</Typography>
-      </Box>
-    );
+    return <RouteAuthLoading message="Cargando..." />;
   }
 
   if (user) {
@@ -78,12 +77,7 @@ function App() {
   const { isLoading: authIsLoading } = useAuth();
 
   if (authIsLoading) {
-    return (
-      <Box className="flex justify-center items-center h-screen">
-        <CircularProgress size={60} />
-        <Typography variant="h5" className="ml-4">Cargando aplicación...</Typography>
-      </Box>
-    );
+      return <AppLoadingScreen />;
   }
 
   return (

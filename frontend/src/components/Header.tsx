@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Link as RouterLink, useNavigate } from 'react-router'; 
-import { useCartContext } from '../contexts/CartContext'; 
+import { Link as RouterLink, useNavigate } from 'react-router';
+import { useCartContext } from '../contexts/CartContext';
 
 import {
   AppBar, Toolbar, Typography, Button, IconButton, Badge, Box,
   Menu, MenuItem, List, ListItem, ListItemAvatar, Avatar,
-  ListItemText, Divider, CircularProgress, Tooltip
+  ListItemText, Divider, CircularProgress, Tooltip,
+  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -17,19 +18,15 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import apiClient from "../services/api";
 
 
-export default function Header() { 
+export default function Header() {
   const {
-    cart,
-    removeFromCart,
-    increaseQuantity,
-    decreaseQuantity,
-    clearCart,
-    isEmpty,
-    cartTotal,
-    refetchPianos 
+    cart, removeFromCart, increaseQuantity, decreaseQuantity,
+    clearCart, isEmpty, cartTotal, refetchPianos
   } = useCartContext();
 
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -37,19 +34,15 @@ export default function Header() {
   const [anchorElCart, setAnchorElCart] = useState<null | HTMLElement>(null);
   const [anchorElUserMenu, setAnchorElUserMenu] = useState<null | HTMLElement>(null);
 
-  const handleOpenCartMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElCart(event.currentTarget);
-  };
-  const handleCloseCartMenu = () => {
-    setAnchorElCart(null);
-  };
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogMessage, setDialogMessage] = useState("");
+  const [dialogSeverity, setDialogSeverity] = useState<'success' | 'error'>('success');
 
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElUserMenu(event.currentTarget);
-  };
-  const handleCloseUserMenu = () => {
-    setAnchorElUserMenu(null);
-  };
+  const handleOpenCartMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorElCart(event.currentTarget);
+  const handleCloseCartMenu = () => setAnchorElCart(null);
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorElUserMenu(event.currentTarget);
+  const handleCloseUserMenu = () => setAnchorElUserMenu(null);
 
   const handleLogout = async () => {
     handleCloseUserMenu();
@@ -57,15 +50,29 @@ export default function Header() {
     navigate('/');
   };
 
+  const showNotificationDialog = (title: string, message: string, severity: 'success' | 'error' = 'success') => {
+    setDialogTitle(title);
+    setDialogMessage(message);
+    setDialogSeverity(severity);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    if (dialogSeverity === 'success') { 
+        navigate('/mi-cuenta');
+    }
+  };
+
+
   const handlePlaceOrder = async () => {
     handleCloseCartMenu();
     if (!user) {
-      alert("Por favor, inicia sesión para realizar un pedido.");
-      navigate('/login');
+      showNotificationDialog("Inicio de Sesión Requerido", "Por favor, inicia sesión para realizar un pedido.", "error");
       return;
     }
     if (cart.length === 0) {
-      alert("El carrito está vacío.");
+      showNotificationDialog("Carrito Vacío", "Tu carrito está vacío. Añade algunos pianos primero.", "error");
       return;
     }
 
@@ -74,31 +81,34 @@ export default function Header() {
         cart: cart.map(item => ({ id: item.id, quantity: item.quantity }))
       };
       const response = await apiClient.post('/orders', orderData);
-      alert('Pedido realizado con éxito! ID del Pedido: ' + response.data.order.id);
+      
       clearCart();
-
       await refetchPianos();
-      console.log("Piano data refetched after order completion.");
-
-      navigate('/mi-cuenta');
+      
+      showNotificationDialog(
+        "¡Pedido Exitoso!",
+        `Tu pedido #${response.data.order.id} ha sido realizado correctamente. Serás redirigido a "Mi Cuenta".`,
+        "success"
+      );
 
     } catch (error: any) {
       console.error('Error placing order:', error);
-      alert('Error al realizar el pedido: ' + (error.response?.data?.message || error.message));
+      const errorMessage = error.response?.data?.message || "Ocurrió un error al procesar tu pedido. Por favor, inténtalo de nuevo.";
+      showNotificationDialog("Error en el Pedido", errorMessage, "error");
     }
   };
 
   return (
-    <AppBar
-      position="sticky" 
-      className="h-18 md:h-24" 
-      sx={{
-        backgroundImage: 'linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("/img/piano_header.jpg")',
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <Toolbar className="container mx-auto xl:px-0 flex justify-between items-center h-full"> 
+    <>
+      <AppBar
+        position="sticky"
+        sx={{
+          backgroundImage: 'linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("/img/piano_header.jpg")',
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
+        }}
+      >
+        <Toolbar className="container mx-auto xl:px-0 flex justify-between items-center h-full">
         <RouterLink to="/" className="flex items-center">
           <img className="h-10 md:h-12" src="/img/piano_logo.png" alt="Piano World Logo" />
         </RouterLink>
@@ -121,7 +131,6 @@ export default function Header() {
                 anchorEl={anchorElUserMenu}
                 open={Boolean(anchorElUserMenu)}
                 onClose={handleCloseUserMenu}
-                disableScrollLock={true}
                 slotProps={{ paper: { className: "mt-2 shadow-lg" } }}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
@@ -129,7 +138,7 @@ export default function Header() {
                 <MenuItem component={RouterLink} to="/mi-cuenta" onClick={handleCloseUserMenu} className="min-w-[180px]">
                   <AccountCircleIcon className="mr-2" /> Mi Cuenta
                 </MenuItem>
-                <MenuItem onClick={handleLogout}> 
+                <MenuItem onClick={handleLogout}>
                   <LogoutIcon className="mr-2" /> Cerrar Sesión
                 </MenuItem>
               </Menu>
@@ -157,21 +166,20 @@ export default function Header() {
             id="cart-menu"
             anchorEl={anchorElCart}
             open={Boolean(anchorElCart)}
-            disableScrollLock={true}
             onClose={handleCloseCartMenu}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             slotProps={{
               paper: {
-                elevation: 3,
+                elevation: 3, 
                 sx: {
                   overflow: 'visible',
                   filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
                   mt: 1.5,
-                  minWidth: 350,
-                  maxWidth: { xs: 'calc(100vw - 32px)', sm: 400, md: 450 },
-                  width: 'auto',
-                  padding: 2,
+                  minWidth: 350, 
+                  maxWidth: { xs: 'calc(100vw - 32px)', sm: 400, md: 450 }, 
+                  width: 'auto', 
+                  padding: 2, 
                   '& .MuiAvatar-root': {
                     width: 56,
                     height: 56,
@@ -223,9 +231,9 @@ export default function Header() {
                         secondary={
                           <Box className="flex items-center mt-1">
                             <Tooltip title="Disminuir cantidad">
-                              <IconButton
-                                size="small"
-                                onClick={() => decreaseQuantity(keyboard.id)}
+                              <IconButton 
+                                size="small" 
+                                onClick={() => decreaseQuantity(keyboard.id)} 
                                 disabled={keyboard.quantity <= 1}
                                 sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.3}}
                               >
@@ -234,8 +242,8 @@ export default function Header() {
                             </Tooltip>
                             <Typography variant="body2" className="mx-2 font-medium tabular-nums">{keyboard.quantity}</Typography>
                             <Tooltip title="Aumentar cantidad">
-                              <IconButton
-                                size="small"
+                              <IconButton 
+                                size="small" 
                                 onClick={() => increaseQuantity(keyboard.id)}
                                 sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.3 }}
                               >
@@ -279,7 +287,32 @@ export default function Header() {
           </Menu>
         </Box>
       </Toolbar>
-     
-    </AppBar>
+      </AppBar>
+
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        aria-labelledby="notification-dialog-title"
+        aria-describedby="notification-dialog-description"
+      >
+        <DialogTitle id="notification-dialog-title" sx={{ display: 'flex', alignItems: 'center' }}>
+          {dialogSeverity === 'success' ? 
+            <CheckCircleOutlineIcon color="success" sx={{ mr: 1 }} /> : 
+            <ErrorOutlineIcon color="error" sx={{ mr: 1 }} />
+          }
+          {dialogTitle}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="notification-dialog-description">
+            {dialogMessage}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary" autoFocus>
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
