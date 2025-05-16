@@ -13,7 +13,8 @@ class PianoController extends Controller
      */
     public function index()
     { 
-        $pianos = Piano::all();
+        $pianos = Piano::orderBy('name', 'asc')->get();
+
         return response()->json($pianos);
         //
     }

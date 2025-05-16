@@ -3,7 +3,8 @@ export type Keyboard ={
     name:string,
     image:string,
     description:string,
-    price:number
+    price:number,
+    stock:number
 }
 
 //export type CartItem = Keyboard & {quantity:number}

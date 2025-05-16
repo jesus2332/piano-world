@@ -1,34 +1,37 @@
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router';
-import Header from "./components/Header"; 
-import HomePage from './pages/HomePage'; 
-import LoginPage from './pages/LoginPage'; 
-import RegisterPage from './pages/RegisterPage'; 
-import MyAccountPage from './pages/MyAccountPage'; 
+// frontend/src/App.tsx
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router'; // CAMBIADO A react-router-dom
+import Header from "./components/Header";
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import MyAccountPage from './pages/MyAccountPage';
 import { useAuth } from './hooks/useAuth';
-import { useCartContext } from './contexts/CartContext';
-function MainLayout() {
-  const { cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, isEmpty, cartTotal } = useCartContext(); 
+import { Box, Container, Typography, CircularProgress } from '@mui/material';
 
+function MainLayout() {
+  
   return (
-    <>
-      <Header
-        cart={cart}
-        removeFromCart={removeFromCart}
-        increaseQuantity={increaseQuantity}
-        decreaseQuantity={decreaseQuantity}
-        clearCart={clearCart}
-        isEmpty={isEmpty}
-        cartTotal={cartTotal}
-      />
-      <main className="container-xl mt-5">
-        <Outlet /> 
-      </main>
-      <footer className="bg-dark mt-5 py-5 ">
-        <div className="container-xl">
-          <p className="text-white text-center fs-4 mt-4 m-md-0">Pianoworld - Todos los derechos Reservados</p>
-        </div>
-      </footer>
-    </>
+    <Box className="flex flex-col min-h-screen">
+      <Header /> 
+      <Container component="main" maxWidth="xl" className="flex-grow py-8">
+        <Outlet />
+      </Container>
+      <Box
+        component="footer"
+        sx={{
+          py: 3,
+          px: 2,
+          mt: 'auto',
+          backgroundColor: (theme) => theme.palette.customDark.main, 
+        }}
+      >
+        <Container maxWidth="xl">
+          <Typography variant="body1" color="white" align="center">
+            Pianoworld - Todos los derechos Reservados
+          </Typography>
+        </Container>
+      </Box>
+    </Box>
   );
 }
 
@@ -36,7 +39,12 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <p className="text-center py-5">Cargando autenticación...</p>;
+    return (
+      <Box className="flex justify-center items-center h-screen">
+        <CircularProgress />
+        <Typography variant="h6" className="ml-4">Cargando autenticación...</Typography>
+      </Box>
+    );
   }
 
   if (!user) {
@@ -50,11 +58,16 @@ function GuestRoute({ children }: { children: JSX.Element }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <p className="text-center py-5">Cargando autenticación...</p>;
+    return (
+      <Box className="flex justify-center items-center h-screen">
+        <CircularProgress />
+        <Typography variant="h6" className="ml-4">Cargando autenticación...</Typography>
+      </Box>
+    );
   }
 
   if (user) {
-    return <Navigate to="/mi-cuenta" replace />; 
+    return <Navigate to="/mi-cuenta" replace />;
   }
 
   return children;
@@ -65,11 +78,12 @@ function App() {
   const { isLoading: authIsLoading } = useAuth();
 
   if (authIsLoading) {
-      return (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-              <h2>Cargando aplicación...</h2>
-          </div>
-      )
+    return (
+      <Box className="flex justify-center items-center h-screen">
+        <CircularProgress size={60} />
+        <Typography variant="h5" className="ml-4">Cargando aplicación...</Typography>
+      </Box>
+    );
   }
 
   return (
@@ -88,7 +102,7 @@ function App() {
             }
           />
         </Route>
-        <Route path="*" element={<Navigate to="/" />} /> 
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );

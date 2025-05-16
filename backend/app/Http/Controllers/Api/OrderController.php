@@ -15,33 +15,41 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $orders = $user->orders()->with('pianos')->latest()->get(); // Cargar pianos relacionados y ordenar por más recientes
+        $orders = $user->orders()->with('pianos')->latest()->get(); 
         return response()->json($orders);
     }
 
-    // Crear un nuevo pedido
     public function store(Request $request)
     {
         $request->validate([
             'cart' => 'required|array',
-            'cart.*.id' => 'required|exists:pianos,id',
+            'cart.*.id' => 'required|exists:pianos,id', 
             'cart.*.quantity' => 'required|integer|min:1',
         ]);
 
         $user = $request->user();
         $cartItems = $request->cart;
         $totalAmount = 0;
+        $pianosToUpdateStock = []; 
 
         DB::beginTransaction();
 
         try {
             foreach ($cartItems as $item) {
-                $piano = Piano::find($item['id']);
-                if (!$piano || $piano->stock < $item['quantity']) { //  chequeo de stock
+                $piano = Piano::find($item['id']); 
+
+                if (!$piano) {
                     DB::rollBack();
-                    return response()->json(['message' => 'Piano no encontrado o sin stock suficiente: ' . ($piano ? $piano->name : 'ID ' . $item['id'])], 400);
+                    return response()->json(['message' => 'Piano con ID ' . $item['id'] . ' no encontrado.'], 404); 
                 }
+
+                if ($piano->stock < $item['quantity']) {
+                    DB::rollBack(); 
+                    return response()->json(['message' => 'Stock insuficiente para: ' . $piano->name . '. Disponible: ' . $piano->stock . ', Solicitado: ' . $item['quantity']], 400); 
+                }
+
                 $totalAmount += $piano->price * $item['quantity'];
+                $pianosToUpdateStock[] = ['model' => $piano, 'quantity_ordered' => $item['quantity']];
             }
 
             $order = $user->orders()->create([
@@ -49,20 +57,27 @@ class OrderController extends Controller
                 'status' => 'pending', 
             ]);
 
-            foreach ($cartItems as $item) {
-                $piano = Piano::find($item['id']);
-                $order->pianos()->attach($piano->id, [
-                    'quantity' => $item['quantity'],
-                    'price_at_purchase' => $piano->price,
+            foreach ($pianosToUpdateStock as $pianoData) {
+                $pianoModel = $pianoData['model'];
+                $quantityOrdered = $pianoData['quantity_ordered'];
+
+                $order->pianos()->attach($pianoModel->id, [
+                    'quantity' => $quantityOrdered,
+                    'price_at_purchase' => $pianoModel->price, 
                 ]);
+
+              
+                $pianoModel->decrement('stock', $quantityOrdered);
             }
 
-            DB::commit();
+            DB::commit(); 
+
             return response()->json(['message' => 'Pedido creado exitosamente', 'order' => $order->load('pianos')], 201);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Error al crear el pedido: ' . $e->getMessage()], 500);
+            DB::rollBack(); 
+            Log::error('Error creando pedido: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine()); 
+            return response()->json(['message' => 'Error al procesar el pedido. Por favor, inténtalo de nuevo.'], 500); 
         }
     }
 }

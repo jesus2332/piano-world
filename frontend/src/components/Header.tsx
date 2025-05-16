@@ -1,163 +1,285 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// frontend/src/components/Header.tsx
-import type { Keyboard, CartItem } from "../types";
-import { useAuth } from '../hooks/useAuth'; 
-import { Link, useNavigate } from 'react-router'; 
-import apiClient from "../services/api"; 
-//import { useCart } from "../hooks/useCart"; 
+import { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { Link as RouterLink, useNavigate } from 'react-router'; 
+import { useCartContext } from '../contexts/CartContext'; 
 
-type HeaderProps = {
-    cart: CartItem[]
-    removeFromCart: (id: Keyboard['id']) => void
-    increaseQuantity: (id: Keyboard['id']) => void
-    decreaseQuantity: (id: Keyboard['id']) => void
-    clearCart: () => void
-    isEmpty: boolean
-    cartTotal: number
-}
+import {
+  AppBar, Toolbar, Typography, Button, IconButton, Badge, Box,
+  Menu, MenuItem, List, ListItem, ListItemAvatar, Avatar,
+  ListItemText, Divider, CircularProgress, Tooltip
+} from '@mui/material';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
+import LoginIcon from '@mui/icons-material/Login';
+import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
+import apiClient from "../services/api";
 
-export default function Header({ cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, isEmpty, cartTotal }: HeaderProps) {
-    const { user, logout, isLoading: authLoading } = useAuth();
-    const navigate = useNavigate();
 
-    const handleLogout = async () => {
-        await logout();
-        navigate('/'); 
-    };
+export default function Header() { 
+  const {
+    cart,
+    removeFromCart,
+    increaseQuantity,
+    decreaseQuantity,
+    clearCart,
+    isEmpty,
+    cartTotal,
+    refetchPianos 
+  } = useCartContext();
 
-    const handlePlaceOrder = async () => {
-        if (!user) {
-            alert("Por favor, inicia sesión para realizar un pedido.");
-            navigate('/login');
-            return;
-        }
-        if (cart.length === 0) {
-            alert("El carrito está vacío.");
-            return;
-        }
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [anchorElCart, setAnchorElCart] = useState<null | HTMLElement>(null);
+  const [anchorElUserMenu, setAnchorElUserMenu] = useState<null | HTMLElement>(null);
 
-        try {
-            const orderData = {
-                cart: cart.map(item => ({ id: item.id, quantity: item.quantity }))
-            };
-            const response = await apiClient.post('/orders', orderData);
-            alert('Pedido realizado con éxito! ID del Pedido: ' + response.data.order.id);
-            clearCart(); 
-            navigate('/mi-cuenta');
-        } catch (error: any) {
-            console.error('Error placing order:', error);
-            alert('Error al realizar el pedido: ' + (error.response?.data?.message || error.message));
-        }
-    };
+  const handleOpenCartMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElCart(event.currentTarget);
+  };
+  const handleCloseCartMenu = () => {
+    setAnchorElCart(null);
+  };
 
-    return (
-        <header className="py-5 header">
-            <div className="container-xl">
-                <div className="row justify-content-center justify-content-md-between align-items-center">
-                    <div className="col-8 col-md-3">
-                        <Link to="/">
-                            <img className="img-fluid" src="/img/piano_logo.png" alt="imagen logo" />
-                        </Link>
-                    </div>
-                    <nav className="col-md-9 mt-3 mt-md-0 d-flex flex-column flex-md-row align-items-center justify-content-md-end">
-                        {/* Menú de Navegación y Autenticación */}
-                        <div className="d-flex align-items-center mb-3 mb-md-0 me-md-3">
-                            <Link to="/" className="text-white me-3 text-decoration-none">Inicio</Link>
-                            {authLoading ? (
-                                <span className="text-white">Cargando...</span>
-                            ) : user ? (
-                                <>
-                                    <Link to="/mi-cuenta" className="text-white me-3 text-decoration-none">Mi cuenta</Link>
-                                    <button onClick={handleLogout} className="btn btn-sm btn-outline-light">Cerrar Sesión</button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link to="/login" className="btn btn-sm btn-outline-light me-2">Iniciar Sesión</Link>
-                                    <Link to="/register" className="btn btn-sm btn-light">Registrarse</Link>
-                                </>
-                            )}
-                        </div>
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElUserMenu(event.currentTarget);
+  };
+  const handleCloseUserMenu = () => {
+    setAnchorElUserMenu(null);
+  };
 
-                        {/* Carrito */}
-                        <div className="carrito">
-                            <img className="img-fluid" src="/img/carrito.png" alt="imagen carrito" />
-                            <div id="carrito" className="bg-white p-3">
-                                {isEmpty ? (
-                                    <p className="text-center m-0">El carrito esta vacio</p>
-                                ) : (
-                                    <>
-                                        <table className="w-100 table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Imagen</th>
-                                                    <th>Nombre</th>
-                                                    <th>Precio</th>
-                                                    <th>Cantidad</th>
-                                                    <th></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {cart.map(keyboard => (
-                                                    <tr key={keyboard.id}>
-                                                        <td>
-                                                            <img className="img-fluid" style={{width: '50px'}} src={`/img/${keyboard.image}.jpg`} alt="imagen piano" />
-                                                        </td>
-                                                        <td>{keyboard.name}</td>
-                                                        <td className="fw-bold">${keyboard.price}</td>
-                                                        <td className="d-flex align-items-center gap-2">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-dark btn-sm"
-                                                                onClick={() => decreaseQuantity(keyboard.id)}
-                                                            >
-                                                                -
-                                                            </button>
-                                                            {keyboard.quantity}
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-dark btn-sm"
-                                                                onClick={() => increaseQuantity(keyboard.id)}
-                                                            >
-                                                                +
-                                                            </button>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                className="btn btn-danger btn-sm"
-                                                                type="button"
-                                                                onClick={() => removeFromCart(keyboard.id)}
-                                                            >
-                                                                X
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <p className="text-end mt-2 mb-1">Total pagar: <span className="fw-bold">${cartTotal.toFixed(2)}</span></p>
-                                        <button className="btn btn-outline-danger w-100 mt-2" onClick={clearCart}>
-                                            Vaciar Carrito
-                                        </button>
-                                        {user && !isEmpty && (
-                                             <button
-                                                className="btn btn-primary w-100 mt-2"
-                                                onClick={handlePlaceOrder}
-                                             >
-                                                Realizar Pedido
-                                            </button>
-                                        )}
-                                        {!user && !isEmpty && (
-                                            <Link to="/login" className="btn btn-warning w-100 mt-2">
-                                                Inicia sesión para pedir
-                                            </Link>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </nav>
-                </div>
-            </div>
-        </header>
-    );
+  const handleLogout = async () => {
+    handleCloseUserMenu();
+    await logout();
+    navigate('/');
+  };
+
+  const handlePlaceOrder = async () => {
+    handleCloseCartMenu();
+    if (!user) {
+      alert("Por favor, inicia sesión para realizar un pedido.");
+      navigate('/login');
+      return;
+    }
+    if (cart.length === 0) {
+      alert("El carrito está vacío.");
+      return;
+    }
+
+    try {
+      const orderData = {
+        cart: cart.map(item => ({ id: item.id, quantity: item.quantity }))
+      };
+      const response = await apiClient.post('/orders', orderData);
+      alert('Pedido realizado con éxito! ID del Pedido: ' + response.data.order.id);
+      clearCart();
+
+      await refetchPianos();
+      console.log("Piano data refetched after order completion.");
+
+      navigate('/mi-cuenta');
+
+    } catch (error: any) {
+      console.error('Error placing order:', error);
+      alert('Error al realizar el pedido: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  return (
+    <AppBar
+      position="sticky" 
+      className="h-18 md:h-24" 
+      sx={{
+        backgroundImage: 'linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("/img/piano_header.jpg")',
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+      }}
+    >
+      <Toolbar className="container mx-auto xl:px-0 flex justify-between items-center h-full"> 
+        <RouterLink to="/" className="flex items-center">
+          <img className="h-10 md:h-12" src="/img/piano_logo.png" alt="Piano World Logo" />
+        </RouterLink>
+
+        <Box className="flex items-center space-x-2 md:space-x-4">
+          <Button component={RouterLink} to="/" color="inherit" sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+            Inicio
+          </Button>
+
+          {authLoading ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : user ? (
+            <>
+              <Tooltip title="Menú de Usuario">
+                <IconButton onClick={handleOpenUserMenu} color="inherit">
+                  <AccountCircleIcon />
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={anchorElUserMenu}
+                open={Boolean(anchorElUserMenu)}
+                onClose={handleCloseUserMenu}
+                disableScrollLock={true}
+                slotProps={{ paper: { className: "mt-2 shadow-lg" } }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem component={RouterLink} to="/mi-cuenta" onClick={handleCloseUserMenu} className="min-w-[180px]">
+                  <AccountCircleIcon className="mr-2" /> Mi Cuenta
+                </MenuItem>
+                <MenuItem onClick={handleLogout}> 
+                  <LogoutIcon className="mr-2" /> Cerrar Sesión
+                </MenuItem>
+              </Menu>
+            </>
+          ) : (
+            <>
+              <Button component={RouterLink} to="/login" color="inherit" variant="outlined" startIcon={<LoginIcon />}
+                sx={{ borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: 'white' } }}>
+                Login
+              </Button>
+              <Button component={RouterLink} to="/register" sx={{ bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: 'grey.200' } }} variant="contained" startIcon={<AppRegistrationIcon />}>
+                Registro
+              </Button>
+            </>
+          )}
+
+          <Tooltip title="Carrito de compras">
+            <IconButton onClick={handleOpenCartMenu} color="inherit">
+              <Badge badgeContent={cart.reduce((sum, item) => sum + item.quantity, 0)} color="secondary">
+                <ShoppingCartIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+          <Menu
+            id="cart-menu"
+            anchorEl={anchorElCart}
+            open={Boolean(anchorElCart)}
+            disableScrollLock={true}
+            onClose={handleCloseCartMenu}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            slotProps={{
+              paper: {
+                elevation: 3,
+                sx: {
+                  overflow: 'visible',
+                  filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                  mt: 1.5,
+                  minWidth: 350,
+                  maxWidth: { xs: 'calc(100vw - 32px)', sm: 400, md: 450 },
+                  width: 'auto',
+                  padding: 2,
+                  '& .MuiAvatar-root': {
+                    width: 56,
+                    height: 56,
+                    mr: 1.5,
+                  },
+                  '&:before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    right: 14,
+                    width: 10,
+                    height: 10,
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    zIndex: 0,
+                  },
+                },
+              },
+            }}
+          >
+            {isEmpty ? (
+              <Typography align="center" className="py-4">El carrito está vacío</Typography>
+            ) : (
+              <>
+                <Typography variant="h6" component="div" sx={{ pb: 1, fontWeight: 'bold' }}>
+                  Tu Carrito
+                </Typography>
+                <Divider sx={{ mb: 1.5 }} />
+                <List dense sx={{ maxHeight: 'calc(60vh - 100px)', overflowY: 'auto', pr: 1 }}>
+                  {cart.map(keyboard => (
+                    <ListItem
+                      key={keyboard.id}
+                      secondaryAction={
+                        <Tooltip title="Eliminar del carrito">
+                          <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(keyboard.id)} size="small">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      }
+                      className="py-2"
+                      disablePadding
+                    >
+                      <ListItemAvatar>
+                        <Avatar variant="rounded" src={`/img/${keyboard.image}.jpg`} alt={keyboard.name} />
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={<Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{keyboard.name}</Typography>}
+                        secondary={
+                          <Box className="flex items-center mt-1">
+                            <Tooltip title="Disminuir cantidad">
+                              <IconButton
+                                size="small"
+                                onClick={() => decreaseQuantity(keyboard.id)}
+                                disabled={keyboard.quantity <= 1}
+                                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.3}}
+                              >
+                                <RemoveIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                            <Typography variant="body2" className="mx-2 font-medium tabular-nums">{keyboard.quantity}</Typography>
+                            <Tooltip title="Aumentar cantidad">
+                              <IconButton
+                                size="small"
+                                onClick={() => increaseQuantity(keyboard.id)}
+                                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.3 }}
+                              >
+                                <AddIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                            <Typography variant="body2" className="ml-auto font-semibold">
+                              ${(keyboard.price * keyboard.quantity).toFixed(2)}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                <Divider className="my-2" />
+                <Typography align="right" variant="h6" className="mb-2">
+                  Total: <span className="font-bold">${cartTotal.toFixed(2)}</span>
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  fullWidth
+                  onClick={clearCart}
+                  className="mb-2"
+                  startIcon={<DeleteIcon />}
+                >
+                  Vaciar Carrito
+                </Button>
+                {user ? (
+                  <Button variant="contained" color="primary" fullWidth onClick={handlePlaceOrder}>
+                    Realizar Pedido
+                  </Button>
+                ) : (
+                  <Button variant="contained" color="secondary" fullWidth component={RouterLink} to="/login" onClick={handleCloseCartMenu}>
+                    Inicia sesión para pedir
+                  </Button>
+                )}
+              </>
+            )}
+          </Menu>
+        </Box>
+      </Toolbar>
+     
+    </AppBar>
+  );
 }

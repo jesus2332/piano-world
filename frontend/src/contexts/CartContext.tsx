@@ -1,6 +1,5 @@
-// frontend/src/contexts/CartContext.tsx
 import { createContext, useContext, ReactNode } from 'react';
-import { useCart as useCartHook } from '../hooks/useCart'; 
+import { useCart as useCartHook } from '../hooks/useCart';
 import type { Keyboard, CartItem } from '../types';
 
 interface CartContextType {
@@ -13,12 +12,13 @@ interface CartContextType {
     clearCart: () => void;
     isEmpty: boolean;
     cartTotal: number;
+    refetchPianos: () => Promise<void>; 
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-    const cartLogic = useCartHook(); 
+    const cartLogic = useCartHook();
 
     return (
         <CartContext.Provider value={cartLogic}>
